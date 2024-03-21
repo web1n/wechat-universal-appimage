@@ -1,0 +1,51 @@
+app: wechat
+binpatch: true
+
+ingredients:
+  dist: oldoldstable
+  sources:
+    - deb http://ftp.debian.org/debian oldoldstable main
+    - deb https://pro-store-packages.uniontech.com/appstore eagle-pro appstore
+  packages:
+    - com.tencent.wechat
+    - proot
+    - openssl
+
+script:
+  # version
+  - jq -r '.version' ./opt/apps/com.tencent.wechat/info > ../VERSION
+
+  - wget https://raw.githubusercontent.com/web1n/wechat-universal-flatpak/main/com.tencent.WeChat.png
+  - wget https://raw.githubusercontent.com/web1n/wechat-universal-flatpak/main/com.tencent.WeChat.desktop
+  - sed -i 's|wechat %U|AppRun|g' ./com.tencent.WeChat.desktop
+
+  - mkdir -p ./app/wechat/
+  - mv ./opt/apps/com.tencent.wechat/files/* ./app/wechat/
+  - rm -r ./opt/
+
+  # AppRun
+  - cat > ./AppRun <<\EOF
+  - #!/bin/bash
+  - export HOME="${HOME}"/.appimage_wechat_files/
+  - export HERE="$(dirname "$(readlink -f "${0}")")"
+  - export PATH="${HERE}"/bin/:"${HERE}"/usr/bin/:"${PATH}"
+  - export LD_LIBRARY_PATH="${HERE}"/usr/lib/:"${HERE}"/usr/lib/x86_64-linux-gnu/:"${HERE}"/usr/lib64/:"${LD_LIBRARY_PATH}"
+  - export QT_AUTO_SCREEN_SCALE_FACTOR=1
+  - unset QT_QPA_PLATFORM
+  - env
+  - wechat $@
+  - EOF
+  - chmod a+x ./AppRun
+
+  # wechat.sh
+  - mkdir ./bin
+  - wget https://raw.githubusercontent.com/web1n/wechat-universal-flatpak/main/wechat.sh -O ./bin/wechat
+  - chmod +x ./bin/wechat
+  - sed -i 's|/app/|$HERE/app/|' ./bin/wechat
+
+  # license
+  - wget https://github.com/web1n/wechat-universal-flatpak/raw/main/license.tar.gz
+  - tar -xzf license.tar.gz
+  - mkdir -p ./app/license/
+  - mv ./license/* ./app/license/
+  - rm -r ./license.tar.gz ./license/

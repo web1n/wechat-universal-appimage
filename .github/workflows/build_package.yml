@@ -1,0 +1,41 @@
+name: Build AppImage
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  build-appimage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: 
+          |
+          sudo apt update
+          sudo apt install wget libfuse2 tar jq -y
+      - name: Install pkg2appimage
+        run:
+          |
+          sudo wget https://github.com/AppImageCommunity/pkg2appimage/releases/download/continuous/pkg2appimage--x86_64.AppImage -O /usr/bin/pkg2appimage
+          sudo chmod +x /usr/bin/pkg2appimage
+      - name: Build
+        run: pkg2appimage wechat.yml
+      - name: Get current date
+        id: date
+        run: echo "CURRENT_DATE=$(date -u '+%y%m%d%H%M')" >> $GITHUB_OUTPUT
+      - name: Upload to Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wechat-appimage
+          path: "out/*.AppImage"
+      - name: Upload to Release
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.date.outputs.CURRENT_DATE }}
+          tag_name: ${{ steps.date.outputs.CURRENT_DATE }}
+          files: "out/*.AppImage"
